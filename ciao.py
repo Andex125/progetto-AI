@@ -1,32 +1,25 @@
-    #------------------------ inizio blocco 1
+    #------------------------ inizio blocco 0
 import torch
-from torch import Tensor
-import pandas as pd
-from sklearn.metrics import roc_auc_score, f1_score, precision_score, recall_score
 import tqdm
 import os
-from torch_geometric.data import download_url, extract_zip, HeteroData
+import pandas as pd
 import torch_geometric.transforms as T
+import torch.nn.functional as F
+from torch import Tensor
+from sklearn.metrics import roc_auc_score, f1_score, precision_score, recall_score
+from torch_geometric.data import download_url, extract_zip, HeteroData
 from torch_geometric.loader import LinkNeighborLoader
 from torch_geometric.nn import SAGEConv, to_hetero
-import torch.nn.functional as F
 
+
+#------------------------ fine blocco 0 e inzio blocco 1
 def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors, neg_sampling_ratio, excel_filename):
 
     print(torch.__version__)
 
     #------------------------ fine blocco 1 e inzio blocco 2
-
+    #
     os.environ['TORCH'] = torch.__version__
-
-    #!pip install torch-scatter -f https://data.pyg.org/whl/torch-${TORCH}.html
-    #!pip install torch-sparse -f https://data.pyg.org/whl/torch-${TORCH}.html
-    #!pip install pyg-lib -f https://data.pyg.org/whl/nightly/torch-${TORCH}.html
-    #!pip install git+https://github.com/pyg-team/pytorch_geometric.git
-
-    #--------------------- fine blocco 2 e inzio blocco 3
-
-    from torch_geometric.data import download_url, extract_zip
 
     url = 'https://files.grouplens.org/datasets/movielens/ml-latest-small.zip'
     extract_zip(download_url(url, '.'), '.')
@@ -34,9 +27,8 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     movies_path = './ml-latest-small/movies.csv'
     ratings_path = './ml-latest-small/ratings.csv'
 
-    #--------------- fine blocco 3 e e inzio blocco 4
+    #------------------------ fine blocco 2 e inzio blocco 3
 
-    import pandas as pd
 
     print('movies.csv:')
     print('===========')
@@ -46,7 +38,7 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     print('============')
     print(pd.read_csv(ratings_path)[["userId", "movieId"]].head())
 
-    #------------------- fine blocco 4 e e inzio blocco 5
+    #------------------------ fine blocco 3 e inzio blocco 4
 
     # Load the entire movie data frame into memory:
     movies_df = pd.read_csv(movies_path, index_col='movieId')
@@ -59,7 +51,7 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     movie_feat = torch.from_numpy(genres.values).to(torch.float)
     assert movie_feat.size() == (9742, 20)  # 20 genres in total.
 
-    #------------------------ fine blocco 5 e inzio blocco 6
+    #------------------------ fine blocco 4 e inzio blocco 5
 
     # Load the entire ratings data frame into memory:
     ratings_df = pd.read_csv(ratings_path)
@@ -101,11 +93,10 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     print("=================================================")
     print(edge_index_user_to_movie)
 
-    #----------------- fine blocco 6 e inzio blocco 7
+    #------------------------ fine blocco 5 e inzio blocco 6
 
 
-    from torch_geometric.data import HeteroData
-    import torch_geometric.transforms as T
+    
 
     data = HeteroData()
 
@@ -139,7 +130,7 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     assert data["user", "rates", "movie"].num_edges == 100836
     assert data["movie", "rev_rates", "user"].num_edges == 100836
 
-    #------------------ fine  blocco 7 e inzio blocco 8
+    #---------------- fine blocco 6 e inzio blocco 7
 
     # For this, we first split the set of edges into
     # training (80%), validation (10%), and testing edges (10%).
@@ -188,14 +179,14 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     # Negative edges with ratio 2:1:
     assert val_data["user", "rates", "movie"].edge_label.long().bincount().tolist() == [20166, 10083]
 
-    #---------------- fine blocco 8 e e inzio blocco 9
+    #---------------- fine blocco 7 e inzio blocco 8
 
     # In the first hop, we sample at most 20 neighbors.
     # In the second hop, we sample at most 10 neighbors.
     # In addition, during training, we want to sample negative edges on-the-fly with
     # a ratio of 2:1.
     # We can make use of the loader.LinkNeighborLoader from PyG:
-    from torch_geometric.loader import LinkNeighborLoader
+    
 
     # Define seed edges:
     edge_label_index = train_data["user", "rates", "movie"].edge_label_index
@@ -221,15 +212,9 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     print("===================")
     print(sampled_data)
 
-    #assert sampled_data["user", "rates", "movie"].edge_label_index.size(1) == 3 * 128
-    #assert sampled_data["user", "rates", "movie"].edge_label.min() == 0
-    #assert sampled_data["user", "rates", "movie"].edge_label.max() == 1
-
-    #--------------- fine blocco 9 e inzio blocco 10
-
-    from torch_geometric.nn import SAGEConv, to_hetero
-    #TODO
-    import torch.nn.functional as F
+    
+   #---------------- fine blocco 8 e inzio blocco 9
+    
 
     class GNN(torch.nn.Module):
         def __init__(self, hidden_channels):
@@ -299,10 +284,9 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
 
     print(model)
 
-    #----------- fine blocco 10 e inzio blocco 11
+    #---------------- fine blocco 9 e inzio blocco 10
 
-    import tqdm
-    import torch.nn.functional as F
+    
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Device: '{device}'")
@@ -336,7 +320,8 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
             loss = total_loss / total_examples
         print(f"Epoch: {epoch:03d}, Loss: {total_loss / total_examples:.4f}")
 
-    # ----------- fine blocco 11 e inizio 12
+    #---------------- fine blocco 10 e inzio blocco 11
+
     # Define the validation seed edges:
     edge_label_index = val_data["user", "rates", "movie"].edge_label_index
     edge_label = val_data["user", "rates", "movie"].edge_label
@@ -360,9 +345,9 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     assert sampled_data["user", "rates", "movie"].edge_label.min() >= 0
     assert sampled_data["user", "rates", "movie"].edge_label.max() <= 1
 
-    # ----------- fine blocco 12 e inzio blocco 13
+    #---------------- fine blocco 11 e inzio blocco 12
 
-    from sklearn.metrics import roc_auc_score
+    
 
     preds = []
     ground_truths = []
@@ -430,7 +415,7 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     
 
     
-    # ---------- fine blocco 12
+    #---------------- fine blocco 12 e inzio blocco 13
     
 
 # codice che esegue la funzione train_and_evaluate per ogni valore di iperpametri con cicli for
@@ -463,3 +448,4 @@ for hidden_channels in hidden_channels_list:
                     print(f"hidden_channels: {hidden_channels}, learning_rate: {learning_rate}, batch_size: {batch_size}, num_neighbors: {num_neighbors}, neg_sampling_ratio: {neg_sampling_ratio}")
                     print("-----------------------------------------------------------------------------------------------------------------")           
 
+#---------------- fine blocco 13 e fine file
