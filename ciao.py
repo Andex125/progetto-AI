@@ -308,7 +308,7 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     print(f"Device: '{device}'")
 
     model = model.to(device)
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 
     for epoch in range(1, 6):
@@ -452,7 +452,6 @@ neg_sampling_ratios = [1.0, 2.0, 3.0]
 #learning_rates = [0.01]
 #batch_sizes = [64]
 #num_neighbors_list = [[10, 5]]
-#neg_sampling_ratios = [1.0]
 #neg_sampling_ratios = [1.0, 2.0, 3.0]
 
 for hidden_channels in hidden_channels_list:
