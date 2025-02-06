@@ -342,7 +342,7 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
 # e salva i risultati su un file excel
 
 # Creazione del file Excel
-excel_filename = "resultsAdamWExtension25.xlsx"
+excel_filename = "resultsAdamWExtension20.xlsx"
 df = pd.DataFrame(columns=["Hidden Channels", "Learning Rate", "Batch Size", "Num Neighbors", "Neg Sampling Ratio", "AUC", "F1-score", "Precision", "Recall", "Loss"])
 df.to_excel(excel_filename, index=False)
 
