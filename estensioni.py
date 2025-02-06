@@ -148,13 +148,19 @@ def prepare_data():
     return train_data, val_data, test_data
 
 # Funzione per estrarre embedding e fare Collaborative Filtering
-def recommend_movies(user_embeddings, movie_embeddings, top_k=5):
-    similarity_matrix = F.cosine_similarity(user_embeddings.unsqueeze(1), 
-                                        movie_embeddings.unsqueeze(0), dim=-1)
+def recommend_movies(user_embeddings, movie_embeddings, top_k=5, batch_size=100):
+    user_embeddings = user_embeddings.cpu()
+    movie_embeddings = movie_embeddings.cpu()
     recommendations = {}
-    for user_idx in range(len(user_embeddings)):
-        recommended_movie_indices = similarity_matrix[user_idx].argsort(descending=True)[:top_k]
-        recommendations[user_idx] = recommended_movie_indices.tolist()
+
+    for start in range(0, len(user_embeddings), batch_size):
+        end = min(start + batch_size, len(user_embeddings))
+        similarity_matrix = F.cosine_similarity(user_embeddings[start:end].unsqueeze(1),
+                                                movie_embeddings.unsqueeze(0), dim=-1)
+        for i, user_idx in enumerate(range(start, end)):
+            recommended_movie_indices = similarity_matrix[i].argsort(descending=True)[:top_k]
+            recommendations[user_idx] = recommended_movie_indices.tolist()
+    
     return recommendations
 
 #------------------------ fine blocco 0 e inzio blocco 1
@@ -188,7 +194,7 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     model = Model(hidden_channels=hidden_channels , data=train_data)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
 
     for epoch in range(1, 6):
@@ -297,7 +303,7 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     # Simuliamo che l'utente accetti alcuni consigli (prendiamo i primo film suggeriti per ogni utente)
     simulated_feedback = {user: recs[:1] for user, recs in recommendations.items()}
 
-    MAX_HISTORY = 5  # Numero massimo di feedback per utente
+    MAX_HISTORY = 20  # Numero massimo di feedback per utente
 
     # Dizionario per tenere traccia delle interazioni utente-film già presenti
     user_feedback = {}
@@ -326,7 +332,6 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     # Aggiorna il dataset con le nuove interazioni "filtrate"
     train_data["user", "rates", "movie"].edge_index = filtered_edges
 
-    print(f"Aggiunte {additional_edges.size(1)} nuove interazioni utente-film simulate.")
 
 
     
@@ -337,7 +342,7 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
 # e salva i risultati su un file excel
 
 # Creazione del file Excel
-excel_filename = "results.xlsx"
+excel_filename = "resultsAdamWExtension25.xlsx"
 df = pd.DataFrame(columns=["Hidden Channels", "Learning Rate", "Batch Size", "Num Neighbors", "Neg Sampling Ratio", "AUC", "F1-score", "Precision", "Recall", "Loss"])
 df.to_excel(excel_filename, index=False)
 
