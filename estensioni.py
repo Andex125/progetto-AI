@@ -194,7 +194,7 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     model = Model(hidden_channels=hidden_channels , data=train_data)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 
 
     for epoch in range(1, 6):
@@ -301,9 +301,9 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
     recommendations = recommend_movies(user_embeddings, movie_embeddings, top_k=5)
 
     # Simuliamo che l'utente accetti alcuni consigli (prendiamo i primo film suggeriti per ogni utente)
-    simulated_feedback = {user: recs[:1] for user, recs in recommendations.items()}
+    simulated_feedback = {user: recs[:5] for user, recs in recommendations.items()}
 
-    MAX_HISTORY = 20  # Numero massimo di feedback per utente
+    MAX_HISTORY = 30  # Numero massimo di feedback per utente
 
     # Dizionario per tenere traccia delle interazioni utente-film già presenti
     user_feedback = {}
@@ -323,14 +323,22 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
             user_feedback[user] = []
         
         user_feedback[user].extend(movies)  # Aggiunge i nuovi film consigliati
-        user_feedback[user] = user_feedback[user][-MAX_HISTORY:]  # Mantiene solo gli ultimi 5 film
+        user_feedback[user] = user_feedback[user][-MAX_HISTORY:]  # Mantiene solo gli ultimi N film
 
-    # Convertiamo il nuovo set di interazioni in tensore
-    filtered_edges = [[user, movie] for user, movies in user_feedback.items() for movie in movies]
-    filtered_edges = torch.tensor(filtered_edges).T  # Shape (2, num_interazioni_filtrate)
+    # Creiamo feature utente basate sui film accettati
+    user_embeddings = model.user_emb.weight.data  # Ottieni le embedding originali
+    movie_embeddings = model.movie_emb.weight.data
 
-    # Aggiorna il dataset con le nuove interazioni "filtrate"
-    train_data["user", "rates", "movie"].edge_index = filtered_edges
+    user_pref_embeddings = {}
+    for user, movies in user_feedback.items():
+        if movies:
+            user_pref_embeddings[user] = movie_embeddings[movies].mean(dim=0)  # Media dei film accettati
+        else:
+            user_pref_embeddings[user] = torch.zeros(movie_embeddings.shape[1])  # Default
+
+    # Converti in tensore e aggiorna train_data["user"].x
+    train_data["user"].x = torch.stack([user_pref_embeddings[user] for user in range(len(user_feedback))])
+
 
 
 
@@ -342,7 +350,7 @@ def train_and_evaluate(hidden_channels, learning_rate, batch_size, num_neighbors
 # e salva i risultati su un file excel
 
 # Creazione del file Excel
-excel_filename = "resultsAdamWExtension20.xlsx"
+excel_filename = "provaSGD.xlsx"
 df = pd.DataFrame(columns=["Hidden Channels", "Learning Rate", "Batch Size", "Num Neighbors", "Neg Sampling Ratio", "AUC", "F1-score", "Precision", "Recall", "Loss"])
 df.to_excel(excel_filename, index=False)
 
